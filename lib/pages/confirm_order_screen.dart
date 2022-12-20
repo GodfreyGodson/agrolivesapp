@@ -1,14 +1,21 @@
+import 'dart:convert';
+
 import 'package:agroshop/models/cart.dart';
 import 'package:agroshop/models/product.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 
 import '../components/widget_custom_stepper.dart';
 import '../config.dart';
 import '../data/cart.dart';
+
+import '../models/order.dart';
+
 import '../providers.dart';
 import '../utils/custom_color.dart';
 import '../utils/dimensions.dart';
+import '../utils/shared_service.dart';
 import '../utils/strings.dart';
 import '../widgets/back_widget.dart';
 import '../widgets/primary_button_widget.dart';
@@ -22,6 +29,7 @@ class ConfirmOrderScreen extends ConsumerStatefulWidget {
 }
 
 class _ConfirmOrderScreenState extends ConsumerState<ConfirmOrderScreen> {
+  Order order = Order();
   TextEditingController shippingAddress = TextEditingController();
   TextEditingController phone = TextEditingController();
   bool isValid = false;
@@ -442,9 +450,13 @@ class _ConfirmOrderScreenState extends ConsumerState<ConfirmOrderScreen> {
             : () {
                 setState(() {
                   isValid = true;
+                  send(context);
                 });
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) => SuccessOrderScreen()));
+                // setState(() => send(context));
+
+                //setState(() => send());
+                // Navigator.of(context).push(MaterialPageRoute(
+                //   builder: (context) => SuccessOrderScreen()));
               },
       ),
     );
@@ -537,5 +549,37 @@ class _ConfirmOrderScreenState extends ConsumerState<ConfirmOrderScreen> {
             child: child,
           );
         });
+  }
+
+  void send(BuildContext context) async {
+    var loginDetails = await SharedService.loginDetails();
+    Map<String, String> requestHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Basic ${loginDetails!.data.token.toString()}'
+    };
+    print('userId, ${loginDetails.data.userId}');
+    final cartProvider = ref.watch(cartItemsProvider);
+    final cartId = cartProvider.cartModel!.cartId;
+    final products = cartProvider.cartModel!.products;
+    final myProducts = products.map((e) {
+      return {"product": e.product.productId, "qty": e.qty};
+    }).toList();
+
+    var body = {
+      "userId": loginDetails.data.userId,
+      "address": shippingAddress.text,
+      "phone": phone.text,
+      "grandTotal": cartProvider.cartModel!.grandTotal.toInt(),
+      "cartId": cartId,
+      "products": myProducts
+    };
+    var response = await http.post(
+        Uri.parse("http://backend.dirmagrolives.co.tz/api/order"),
+        headers: requestHeaders,
+        body: jsonEncode(body));
+
+    print(response.body);
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (context) => SuccessOrderScreen()));
   }
 }
