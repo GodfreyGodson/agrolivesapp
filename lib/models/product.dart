@@ -46,6 +46,14 @@ class Product {
       relatedProducts: [],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    final Map<String, dynamic> data = new Map<String, dynamic>();
+    data['productName'] = this.productName;
+    data['productId'] = this.productId;
+    data['productSalePrice'] = this.productSalePrice;
+    return data;
+  }
 }
 
 extension ProductExt on Product {
